@@ -193,9 +193,9 @@ print(f"\n✅ k tốt nhất theo Silhouette: k = {best_k}")
 print("💡 Sau log-transform, best_k thường cao hơn vì outlier đã được 'nén' lại")
 
 # Bước 4: Chạy K-Means với k tốt nhất
-k = 4
+# k = best_k
 # Lưu ý: Nếu muốn chọn k thủ công (ví dụ k=4), uncomment dòng dưới:
-# k = 4
+k = 4
 
 kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
 rfm['Cluster'] = kmeans.fit_predict(rfm_scaled)

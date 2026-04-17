@@ -1,0 +1,141 @@
+Machine Learning dự báo là gì? Là dạy máy tính học từ dữ liệu quá khứ để đoán tương lai. Có 2 bài toán trong phase này:
+Bài toán 1 — Sales Forecasting: Dự báo doanh thu tháng sau dựa trên xu hướng các tháng trước. Dùng dữ liệu chuỗi thời gian (time series).
+Bài toán 2 — Churn Prediction: Dự đoán khách hàng nào sắp "bỏ đi" (không mua nữa). Dùng dữ liệu RFM đã tính ở Phase 3.
+
+Tại sao dùng Prophet? Facebook Prophet là thư viện được thiết kế riêng cho dữ liệu bán hàng có seasonality (mùa vụ). Với người mới, nó dễ dùng hơn LSTM rất nhiều và cho kết quả tốt. Sau khi chạy Prophet ổn, ta sẽ so sánh thêm với LSTM.
+
+Dữ liệu ngày: 305 ngày
+          ds         y
+0 2010-12-01  58960.79
+1 2010-12-02  47748.38
+2 2010-12-03  46943.71
+3 2010-12-05  31774.95
+4 2010-12-06  54830.46
+
+
+# Chia train/test: train đến 31/10/2011, test tháng 11-12/2011
+Train: 271 ngày (2010-12-01 → 2011-10-31)
+Test:  34 ngày  (2011-11-01 → 2011-12-09)
+
+# Huấn luyện mô hình Prophet: # Có chu kỳ năm (Giáng sinh, v.v.), # Có chu kỳ tuần (cuối tuần mua ít hơn), # Không cần chu kỳ ngày, Seasonality nhân (tốt hơn cho bán lẻ)
+✅ Huấn luyện xong!
+=== KẾT QUẢ DỰ BÁO (Prophet) ===
+MAE  (Sai số trung bình tuyệt đối):  £21,465
+RMSE (Căn sai số bình phương TB):     £33,957
+MAPE (Sai số phần trăm TB):           31.8%
+Giải thích: MAPE = X% nghĩa là dự báo lệch X% so với thực tế
+
+XGBoost là gì? Là thuật toán ML rất mạnh, dùng cho dữ liệu dạng bảng. Ta sẽ tạo thêm features từ ngày (tháng, ngày trong tuần, lag...) rồi dùng XGBoost để so sánh với Prophet.
+=== KẾT QUẢ XGBoost ===
+MAE:  £21,144
+RMSE: £33,372
+MAPE: 30.7%
+
+=== BẢNG SO SÁNH MODEL DỰ BÁO ===
+  Model MAE (£) RMSE (£) MAPE (%)
+Prophet   21465    33957    31.8%
+XGBoost   21144    33372    30.7%
+
+→ Model có MAPE thấp hơn = dự báo chính xác hơn
+
+============================================================
+CÁCH 2: TRAIN/TEST CHỈ TRÊN THÁNG 1–10
+(Loại bỏ tháng 11-12 do Black Friday + Giáng sinh + dữ liệu thiếu)
+============================================================
+Train: 219 ngày (2010-12-01 → 2011-08-31)
+Test:  52 ngày  (2011-09-01 → 2011-10-31)
+18:40:20 - cmdstanpy - INFO - Chain [1] start processing
+18:40:20 - cmdstanpy - INFO - Chain [1] done processing
+=== KẾT QUẢ DỰ BÁO — Prophet (Cách 2: tháng 1–10) ===
+MAE:  £21,598
+RMSE: £27,030
+MAPE: 44.3%
+=== KẾT QUẢ XGBoost (Cách 2: tháng 1–10) ===
+MAE:  £19,081
+RMSE: £23,584
+MAPE: 41.7%
+=== BẢNG SO SÁNH MODEL — Cách 2 (tháng 1–10) ===
+  Model MAE (£) RMSE (£) MAPE (%)
+Prophet   21598    27030    44.3%
+XGBoost   19081    23584    41.7%
+============================================================
+SO SÁNH TỔNG HỢP: Cách 1 (test tháng 11-12) vs Cách 2 (test tháng 9-10)
+============================================================
+             Cách / Model MAE (£) RMSE (£) MAPE (%)
+C1: Prophet (test T11-12)   21465    33957    31.8%
+C1: XGBoost (test T11-12)   21144    33372    30.7%
+ C2: Prophet (test T9-10)   21598    27030    44.3%
+ C2: XGBoost (test T9-10)   19081    23584    41.7%
+→ Nếu MAPE Cách 2 thấp hơn nhiều → khẳng định tháng 11-12 gây nhiễu lớn
+→ Cách 2 phản ánh đúng hơn khả năng dự báo của model trên dữ liệu bình thường
+
+# Tạo nhãn churn: Recency > 90 ngày = đã churn (Giải thích tại sao >90 ngày)
+=== PHÂN PHỐI NHÃN CHURN ===
+Còn active (0):  2,889 khách (66.6%)
+Đã churn   (1):  1,449 khách (33.4%)
+Train: 3,470 khách
+Test:  868 khách
+=== KẾT QUẢ CHURN PREDICTION ===
+              precision    recall  f1-score   support
+
+  Còn active       0.75      0.82      0.78       578
+    Đã churn       0.55      0.44      0.49       290
+
+    accuracy                           0.69       868
+   macro avg       0.65      0.63      0.64       868
+weighted avg       0.68      0.69      0.68       868
+
+AUC-ROC: 0.7306
+
+Giải thích:
+Precision: Trong số khách mô hình dự báo churn, bao nhiêu % đúng
+Recall:    Trong số khách thực sự churn, mô hình tìm đúng bao nhiêu %
+AUC-ROC:   Điểm tổng hợp (0.5=ngẫu nhiên, 1.0=hoàn hảo)
+
+
+# Vẽ Confusion Matrix (confusion_matrix.png)
+# Ô trên-trái: đúng active, ô dưới-phải: đúng churn
+# Ô trên-phải: báo nhầm churn, ô dưới-trái: bỏ sót churn
+
+# Feature Importance: feature nào quan trọng nhất?
+
+✅ Phase 4 hoàn thành!
+   Sales Forecasting: Prophet + XGBoost đã so sánh
+   Churn Prediction:  Random Forest đã huấn luyện
+   Tại sao 2 cái đó lại dùng 2 phương thức khác nhau???????????????????
+
+
+Nguyên nhân MAPE cao ~31%
+1. Test period CAO GẤP ĐÔI train period
+
+Train avg: £31,433/ngày
+Test avg: £63,185/ngày (+101%)
+Tháng 11-12 có Black Friday, Cyber Monday, Christmas - nhưng train chỉ có 271 ngày không bao gồm mùa cao điểm này
+2. Biến động CỰC CAO
+
+Coefficient of Variation = 60.4% (>50% = rất cao)
+Ngày đỉnh điểm 2011-12-09: £200,920 (gấp 6 lần trung bình)
+3. Train set nhỏ
+
+Chỉ 271 ngày (~9 tháng)
+Thiếu dữ liệu tháng 11-12 năm trước để model học pattern
+Kết quả test 4 cách cải thiện
+                Method    MAPE   Improvement
+   Original (baseline)   31.8%      -
+         Log-transform   30.3%   ✅ +1.5%
+          Add holidays   33.4%   ❌ -1.6%
+      Tune hyperparams   31.8%      0.0%
+Ensemble (Prophet+XGB)   29.8%   ✅ +2.0%  (BEST)
+Khuyến nghị
+✅ Dùng Ensemble model - giảm MAPE xuống 29.8% (cải thiện 2%)
+
+✅ MAPE 20-30% là HỢP LÝ cho dữ liệu bán lẻ có:
+
+Biến động cao (CV > 50%)
+Test period cao gấp đôi train
+Outliers mạnh
+⚠️ KHÔNG nên kỳ vọng MAPE < 15% với dataset này trừ khi:
+
+Có thêm 1-2 năm dữ liệu lịch sử
+Thêm features ngoài (khuyến mãi, marketing spend, thời tiết)
+File phân tích chi tiết đã được lưu tại predictive-modeling-improved.py. Bạn có thể chạy lại để xem từng bước.

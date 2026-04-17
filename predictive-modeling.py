@@ -10,7 +10,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
 import seaborn as sns
 
-
 df_all = pd.read_csv('outputs/df_all_clean.csv', parse_dates=['InvoiceDate'])
 
 # Tổng hợp doanh thu theo ngày
@@ -73,9 +72,29 @@ ax.fill_between(forecast_test['ds'],
 ax.set_title('Dự báo doanh thu — Prophet', fontsize=14)
 ax.set_xlabel('Ngày')
 ax.set_ylabel('Doanh thu (£)')
+
+# Gắn nhãn số liệu cho từng điểm trên tập test và dự báo
+for x, y in zip(test['ds'], test['y']):
+    ax.annotate(f'{y:,.0f}',
+                (x, y),
+                textcoords='offset points',
+                xytext=(0, 5),
+                ha='center',
+                fontsize=7,
+                color='#2E7D32')
+
+for x, yhat in zip(forecast_test['ds'], forecast_test['yhat']):
+    ax.annotate(f'{yhat:,.0f}',
+                (x, yhat),
+                textcoords='offset points',
+                xytext=(0, -10),
+                ha='center',
+                fontsize=7,
+                color='#F44336')
+
 ax.legend()
 plt.tight_layout()
-plt.savefig('forecast_prophet.png', dpi=150)
+plt.savefig('outputs/forecast_prophet.png', dpi=150)
 
 # Tạo features từ ngày (time-based features)
 def make_time_features(df):
@@ -130,6 +149,167 @@ print("\n=== BẢNG SO SÁNH MODEL DỰ BÁO ===")
 print(comparison.to_string(index=False))
 print("\n→ Model có MAPE thấp hơn = dự báo chính xác hơn")
 
+# ============================================================================
+# CÁCH 2: Train/Test chỉ trên tháng 1–10 (loại bỏ tháng 11-12)
+# ----------------------------------------------------------------------------
+# Lý do: Tháng 11 có Black Friday, tháng 12 có Giáng sinh → doanh thu tăng
+# đột biến (spike) khiến model khó dự báo chính xác.
+# Thêm vào đó, tháng 12 chỉ có dữ liệu đến 2011-12-09 (không đủ tháng).
+# → Thử train/test chỉ trên dữ liệu "bình thường" (tháng 1-10) để đánh giá
+#   khả năng dự báo thực sự của model, không bị nhiễu bởi mùa lễ hội.
+# Split: Train tháng 1–8, Test tháng 9–10
+# ============================================================================
+print("\n" + "="*60)
+print("CÁCH 2: TRAIN/TEST CHỈ TRÊN THÁNG 1–10")
+print("(Loại bỏ tháng 11-12 do Black Friday + Giáng sinh + dữ liệu thiếu)")
+print("="*60)
+
+# Chỉ lấy dữ liệu đến hết tháng 10
+daily_revenue_10m = daily_revenue[daily_revenue['ds'] < '2011-11-01'].copy()
+
+# Train: tháng 1–8, Test: tháng 9–10
+train_v2 = daily_revenue_10m[daily_revenue_10m['ds'] < '2011-09-01']
+test_v2  = daily_revenue_10m[daily_revenue_10m['ds'] >= '2011-09-01']
+
+print(f"Train: {len(train_v2)} ngày ({train_v2['ds'].min().date()} → {train_v2['ds'].max().date()})")
+print(f"Test:  {len(test_v2)} ngày  ({test_v2['ds'].min().date()} → {test_v2['ds'].max().date()})")
+
+# --- Prophet (Cách 2) ---
+model_v2 = Prophet(
+    yearly_seasonality=True,
+    weekly_seasonality=True,
+    daily_seasonality=False,
+    seasonality_mode='multiplicative'
+)
+model_v2.fit(train_v2)
+
+future_v2 = model_v2.make_future_dataframe(periods=len(test_v2))
+forecast_v2 = model_v2.predict(future_v2)
+
+forecast_test_v2 = forecast_v2[forecast_v2['ds'].isin(test_v2['ds'])][['ds','yhat','yhat_lower','yhat_upper']]
+forecast_test_v2 = forecast_test_v2.merge(test_v2, on='ds')
+
+mae_v2  = mean_absolute_error(forecast_test_v2['y'], forecast_test_v2['yhat'])
+rmse_v2 = np.sqrt(mean_squared_error(forecast_test_v2['y'], forecast_test_v2['yhat']))
+mape_v2 = (abs((forecast_test_v2['y'] - forecast_test_v2['yhat']) / forecast_test_v2['y']).mean()) * 100
+
+print("\n=== KẾT QUẢ DỰ BÁO — Prophet (Cách 2: tháng 1–10) ===")
+print(f"MAE:  £{mae_v2:,.0f}")
+print(f"RMSE: £{rmse_v2:,.0f}")
+print(f"MAPE: {mape_v2:.1f}%")
+
+# --- XGBoost (Cách 2) ---
+data_feat_10m = make_time_features(daily_revenue_10m)
+data_feat_10m = data_feat_10m.dropna()
+
+train_feat_v2 = data_feat_10m[data_feat_10m['ds'] < '2011-09-01']
+test_feat_v2  = data_feat_10m[data_feat_10m['ds'] >= '2011-09-01']
+
+X_train_v2, y_train_v2 = train_feat_v2[feature_cols], train_feat_v2['y']
+X_test_v2,  y_test_v2  = test_feat_v2[feature_cols],  test_feat_v2['y']
+
+xgb_v2 = XGBRegressor(n_estimators=200, learning_rate=0.05,
+                       max_depth=5, random_state=42, verbosity=0)
+xgb_v2.fit(X_train_v2, y_train_v2)
+y_pred_xgb_v2 = xgb_v2.predict(X_test_v2)
+
+mae_xgb_v2  = mean_absolute_error(y_test_v2, y_pred_xgb_v2)
+rmse_xgb_v2 = np.sqrt(mean_squared_error(y_test_v2, y_pred_xgb_v2))
+mape_xgb_v2 = (abs((y_test_v2 - y_pred_xgb_v2) / y_test_v2).mean()) * 100
+
+print("\n=== KẾT QUẢ XGBoost (Cách 2: tháng 1–10) ===")
+print(f"MAE:  £{mae_xgb_v2:,.0f}")
+print(f"RMSE: £{rmse_xgb_v2:,.0f}")
+print(f"MAPE: {mape_xgb_v2:.1f}%")
+
+# Bảng so sánh Cách 2
+comparison_v2 = pd.DataFrame({
+    'Model':  ['Prophet', 'XGBoost'],
+    'MAE (£)': [f'{mae_v2:.0f}',     f'{mae_xgb_v2:.0f}'],
+    'RMSE (£)': [f'{rmse_v2:.0f}',    f'{rmse_xgb_v2:.0f}'],
+    'MAPE (%)': [f'{mape_v2:.1f}%',   f'{mape_xgb_v2:.1f}%']
+})
+print("\n=== BẢNG SO SÁNH MODEL — Cách 2 (tháng 1–10) ===")
+print(comparison_v2.to_string(index=False))
+
+# So sánh cùng 1 thuật toán giữa Cách 1 và Cách 2
+# 1) Prophet: chọn phiên bản có MAPE tốt hơn để export
+if mape <= mape_v2:
+    best_prophet_model = model
+    best_prophet_approach = 'Cách 1 (test T11-12)'
+    best_prophet_mape = mape
+else:
+    best_prophet_model = model_v2
+    best_prophet_approach = 'Cách 2 (test T9-10)'
+    best_prophet_mape = mape_v2
+
+# 2) XGBoost: chọn phiên bản có MAPE tốt hơn để export
+if mape_xgb <= mape_xgb_v2:
+    best_xgb_model = xgb
+    best_xgb_approach = 'Cách 1 (test T11-12)'
+    best_xgb_mape = mape_xgb
+else:
+    best_xgb_model = xgb_v2
+    best_xgb_approach = 'Cách 2 (test T9-10)'
+    best_xgb_mape = mape_xgb_v2
+
+print("\n=== SO SÁNH THEO TỪNG THUẬT TOÁN (C1 vs C2) ===")
+print(f"✅ Prophet tốt hơn ở: {best_prophet_approach} (MAPE: {best_prophet_mape:.1f}%)")
+print(f"✅ XGBoost tốt hơn ở: {best_xgb_approach} (MAPE: {best_xgb_mape:.1f}%)")
+
+# So sánh tổng hợp giữa Cách 1 (gồm tháng 11-12) và Cách 2 (chỉ tháng 1-10)
+print("\n" + "="*60)
+print("SO SÁNH TỔNG HỢP: Cách 1 (test tháng 11-12) vs Cách 2 (test tháng 9-10)")
+print("="*60)
+comparison_all = pd.DataFrame({
+    'Cách / Model': [
+        'C1: Prophet (test T11-12)',
+        'C1: XGBoost (test T11-12)',
+        'C2: Prophet (test T9-10)',
+        'C2: XGBoost (test T9-10)'
+    ],
+    'MAE (£)':  [f'{mae:.0f}', f'{mae_xgb:.0f}', f'{mae_v2:.0f}', f'{mae_xgb_v2:.0f}'],
+    'RMSE (£)': [f'{rmse:.0f}', f'{rmse_xgb:.0f}', f'{rmse_v2:.0f}', f'{rmse_xgb_v2:.0f}'],
+    'MAPE (%)': [f'{mape:.1f}%', f'{mape_xgb:.1f}%', f'{mape_v2:.1f}%', f'{mape_xgb_v2:.1f}%']
+})
+print(comparison_all.to_string(index=False))
+print("\n→ Nếu MAPE Cách 2 thấp hơn nhiều → khẳng định tháng 11-12 gây nhiễu lớn")
+print("→ Cách 2 phản ánh đúng hơn khả năng dự báo của model trên dữ liệu bình thường")
+
+# Vẽ biểu đồ dự báo Cách 2
+fig2, ax2 = plt.subplots(figsize=(13, 5))
+ax2.plot(train_v2['ds'], train_v2['y'], color='#1565C0', label='Doanh thu thực (train)', linewidth=1)
+ax2.plot(test_v2['ds'],  test_v2['y'],  color='#2E7D32', label='Doanh thu thực (test)',  linewidth=2)
+ax2.plot(forecast_test_v2['ds'], forecast_test_v2['yhat'],
+         color='#F44336', label='Dự báo (Prophet)', linewidth=2, linestyle='--')
+ax2.fill_between(forecast_test_v2['ds'],
+                 forecast_test_v2['yhat_lower'], forecast_test_v2['yhat_upper'],
+                 alpha=0.15, color='#F44336', label='Khoảng tin cậy')
+ax2.set_title('Dự báo doanh thu — Prophet (Cách 2: chỉ tháng 1–10, tránh mùa lễ hội)', fontsize=13)
+ax2.set_xlabel('Ngày')
+ax2.set_ylabel('Doanh thu (£)')
+
+for x, y_val in zip(test_v2['ds'], test_v2['y']):
+    ax2.annotate(f'{y_val:,.0f}',
+                 (x, y_val),
+                 textcoords='offset points',
+                 xytext=(0, 5),
+                 ha='center',
+                 fontsize=7,
+                 color='#2E7D32')
+
+for x, yhat_val in zip(forecast_test_v2['ds'], forecast_test_v2['yhat']):
+    ax2.annotate(f'{yhat_val:,.0f}',
+                 (x, yhat_val),
+                 textcoords='offset points',
+                 xytext=(0, -10),
+                 ha='center',
+                 fontsize=7,
+                 color='#F44336')
+
+ax2.legend()
+plt.tight_layout()
+plt.savefig('outputs/forecast_prophet_v2.png', dpi=150)
 
 
 rfm = pd.read_csv('outputs/rfm_segments.csv')
@@ -186,7 +366,7 @@ sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
             yticklabels=['Thực tế: Active','Thực tế: Churn'])
 plt.title('Confusion Matrix — Churn Prediction', fontsize=13)
 plt.tight_layout()
-plt.savefig('confusion_matrix.png', dpi=150)
+plt.savefig('outputs/confusion_matrix.png', dpi=150)
 # Ô trên-trái: đúng active, ô dưới-phải: đúng churn
 # Ô trên-phải: báo nhầm churn, ô dưới-trái: bỏ sót churn
 
@@ -194,12 +374,16 @@ plt.savefig('confusion_matrix.png', dpi=150)
 feat_imp = pd.Series(rf.feature_importances_, index=features_churn).sort_values(ascending=True)
 
 plt.figure(figsize=(7, 4))
-feat_imp.plot(kind='barh', color='#42A5F5')
+ax = feat_imp.plot(kind='barh', color='#42A5F5')
 plt.title('Tầm quan trọng của từng feature', fontsize=13)
 plt.xlabel('Importance Score')
-plt.tight_layout()
-plt.savefig('feature_importance.png', dpi=150)
 
+# Gắn nhãn số liệu cho từng cột feature importance
+for i, v in enumerate(feat_imp.values):
+    ax.text(v + 0.005, i, f'{v:.3f}', va='center', fontsize=9)
+
+plt.tight_layout()
+plt.savefig('outputs/feature_importance.png', dpi=150)
 
 
 # Lưu model
@@ -208,12 +392,28 @@ with open('outputs/prophet_model.pkl', 'wb') as f:
 with open('outputs/churn_rf_model.pkl', 'wb') as f:
     pickle.dump(rf, f)
 
+# Lưu model forecast tốt nhất cho từng thuật toán (so sánh C1 vs C2)
+with open('outputs/best_prophet_model.pkl', 'wb') as f:
+    pickle.dump(best_prophet_model, f)
+with open('outputs/best_xgb_model.pkl', 'wb') as f:
+    pickle.dump(best_xgb_model, f)
+
+# Lưu thông tin model thắng cuộc theo từng thuật toán để dễ tra cứu
+best_forecast_summary = pd.DataFrame({
+    'Algorithm': ['Prophet', 'XGBoost'],
+    'Best Approach': [best_prophet_approach, best_xgb_approach],
+    'Best MAPE (%)': [round(best_prophet_mape, 1), round(best_xgb_mape, 1)],
+    'Model File': ['best_prophet_model.pkl', 'best_xgb_model.pkl']
+})
+best_forecast_summary.to_csv('outputs/best_forecast_models_summary.csv', index=False)
+
 # Lưu dự báo
 rfm['ChurnProba'] = rf.predict_proba(rfm[features_churn])[:, 1]
 rfm.to_csv('outputs/rfm_with_predictions.csv', index=False)
 
 print("✅ Phase 4 hoàn thành!")
 print("   Sales Forecasting: Prophet + XGBoost đã so sánh")
+print("   Best Forecast Models: đã export Prophet + XGBoost tốt nhất (C1 vs C2)")
 print("   Churn Prediction:  Random Forest đã huấn luyện")
 
 
