@@ -1,3 +1,7 @@
+import sys
+import io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -312,6 +316,45 @@ plt.tight_layout()
 plt.savefig('outputs/forecast_prophet_v2.png', dpi=150)
 
 
+# Export forecast_results.csv cho dashboard (trước khi biến bị overwrite bởi churn section)
+forecast_export = forecast_test[['ds', 'y', 'yhat', 'yhat_lower', 'yhat_upper']].copy()
+forecast_export.columns = ['ds', 'actual', 'predicted', 'predicted_lower', 'predicted_upper']
+forecast_export['approach'] = 'Cách 1 (test T11-12)'
+forecast_export['model'] = 'Prophet'
+
+forecast_export_v2 = forecast_test_v2[['ds', 'y', 'yhat', 'yhat_lower', 'yhat_upper']].copy()
+forecast_export_v2.columns = ['ds', 'actual', 'predicted', 'predicted_lower', 'predicted_upper']
+forecast_export_v2['approach'] = 'Cách 2 (test T9-10)'
+forecast_export_v2['model'] = 'Prophet'
+
+xgb_export = test_feat[['ds']].copy().reset_index(drop=True)
+xgb_export['actual'] = test_feat['y'].values
+xgb_export['predicted'] = y_pred_xgb
+xgb_export['predicted_lower'] = y_pred_xgb * 0.85
+xgb_export['predicted_upper'] = y_pred_xgb * 1.15
+xgb_export['approach'] = 'Cách 1 (test T11-12)'
+xgb_export['model'] = 'XGBoost'
+
+xgb_export_v2 = test_feat_v2[['ds']].copy().reset_index(drop=True)
+xgb_export_v2['actual'] = test_feat_v2['y'].values
+xgb_export_v2['predicted'] = y_pred_xgb_v2
+xgb_export_v2['predicted_lower'] = y_pred_xgb_v2 * 0.85
+xgb_export_v2['predicted_upper'] = y_pred_xgb_v2 * 1.15
+xgb_export_v2['approach'] = 'Cách 2 (test T9-10)'
+xgb_export_v2['model'] = 'XGBoost'
+
+forecast_all = pd.concat([forecast_export, forecast_export_v2, xgb_export, xgb_export_v2], ignore_index=True)
+forecast_all.to_csv('outputs/forecast_results.csv', index=False)
+
+daily_revenue.to_csv('outputs/daily_revenue.csv', index=False)
+
+train_data_export = pd.DataFrame({'ds': train['ds'], 'y': train['y'], 'split': 'train'})
+test_data_export = pd.DataFrame({'ds': test['ds'], 'y': test['y'], 'split': 'test'})
+train_test_all = pd.concat([train_data_export, test_data_export], ignore_index=True)
+train_test_all.to_csv('outputs/daily_revenue_split.csv', index=False)
+
+print("Forecast results exported!")
+
 rfm = pd.read_csv('outputs/rfm_segments.csv')
 
 # Tạo nhãn churn: Recency > 90 ngày = đã churn
@@ -411,9 +454,10 @@ best_forecast_summary.to_csv('outputs/best_forecast_models_summary.csv', index=F
 rfm['ChurnProba'] = rf.predict_proba(rfm[features_churn])[:, 1]
 rfm.to_csv('outputs/rfm_with_predictions.csv', index=False)
 
-print("✅ Phase 4 hoàn thành!")
-print("   Sales Forecasting: Prophet + XGBoost đã so sánh")
-print("   Best Forecast Models: đã export Prophet + XGBoost tốt nhất (C1 vs C2)")
-print("   Churn Prediction:  Random Forest đã huấn luyện")
+print("Phase 4 completed!")
+print("   Sales Forecasting: Prophet + XGBoost compared")
+print("   Best Forecast Models: exported")
+print("   Churn Prediction: Random Forest trained")
+print("   Forecast Results: forecast_results.csv exported for dashboard")
 
 

@@ -255,7 +255,7 @@ CustomerID,Recency,Frequency,Monetary,Diversity,Cluster,Segment,Churned,ChurnPro
 12656,17,5,4051.17,89,3,Champions,0,0.08
 12657,11,4,1643.18,35,0,Champions,0,0.08
 12658,19,1,686.05,36,0,Potential Loyalists,0,0.07
-12659,30,1,91.68,5,2,Potential Loyalists,0,0.5091666666666667
+12659,30,1,91.68,5,2,Potential Loyalists,0,0.5091666666666668
 12660,11,1,245.1,13,0,Potential Loyalists,0,0.32
 12662,1,11,3849.78,129,3,Champions,0,0.02
 12664,8,9,4881.88,10,3,Champions,0,0.02
@@ -616,7 +616,7 @@ CustomerID,Recency,Frequency,Monetary,Diversity,Cluster,Segment,Churned,ChurnPro
 13157,49,4,1741.22,69,1,Champions,0,0.07
 13158,95,4,1201.06,59,1,Loyal Customers,1,0.66
 13159,9,4,1437.85,114,3,Champions,0,0.07
-13160,22,1,91.8,4,2,Potential Loyalists,0,0.49400000000000005
+13160,22,1,91.8,4,2,Potential Loyalists,0,0.494
 13161,313,1,112.75,8,2,Lost / At Risk,1,0.95
 13162,122,4,1688.29,74,1,Loyal Customers,1,0.66
 13165,46,2,1021.48,40,1,Champions,0,0.1
@@ -898,7 +898,7 @@ CustomerID,Recency,Frequency,Monetary,Diversity,Cluster,Segment,Churned,ChurnPro
 13546,12,3,626.99,72,0,Potential Loyalists,0,0.1
 13548,96,2,682.41,114,1,Loyal Customers,1,0.8
 13549,26,7,918.2,37,1,Champions,0,0.06
-13551,319,1,91.8,4,2,Lost / At Risk,1,0.49400000000000005
+13551,319,1,91.8,4,2,Lost / At Risk,1,0.494
 13552,66,12,3740.07,82,3,Loyal Customers,0,0.01
 13555,74,4,4149.28,128,1,Loyal Customers,0,0.0
 13557,28,2,584.0600000000001,31,0,Potential Loyalists,0,0.17
