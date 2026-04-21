@@ -15,31 +15,35 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ===== CUSTOM CSS — MODERN DARK THEME =====
+# ===== DETECT THEME (for Plotly only) =====
+THEME_BASE = st.get_option("theme.base") or "light"
+is_dark_theme = THEME_BASE == "dark"
+
+# ===== CUSTOM CSS — LIGHT/DARK THEME =====
+# Dùng CSS variables native của Streamlit để tự đổi theo panel dark/light runtime.
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-    --bg-primary: #0f1117;
-    --bg-secondary: #1a1d29;
-    --bg-card: #1e2130;
-    --bg-card-hover: #252940;
-    --accent-blue: #4f8df9;
-    --accent-cyan: #00d4aa;
-    --accent-purple: #a78bfa;
-    --accent-orange: #fb923c;
-    --accent-pink: #f472b6;
+    --bg-primary: var(--background-color);
+    --bg-secondary: var(--secondary-background-color);
+    --bg-card: var(--secondary-background-color);
+    --bg-card-hover: color-mix(in srgb, var(--secondary-background-color) 86%, white 14%);
+    --accent-blue: var(--primary-color);
+    --accent-cyan: #14b8a6;
+    --accent-purple: #8b5cf6;
+    --accent-orange: #f97316;
+    --accent-pink: #ec4899;
     --accent-red: #ef4444;
     --accent-green: #22c55e;
-    --text-primary: #f1f5f9;
-    --text-secondary: #94a3b8;
-    --text-muted: #64748b;
-    --border-color: #2d3348;
-    --gradient-blue: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    --gradient-green: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-    --gradient-orange: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    --gradient-cyan: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    --text-primary: var(--text-color);
+    --text-secondary: color-mix(in srgb, var(--text-color) 78%, transparent 22%);
+    --text-muted: color-mix(in srgb, var(--text-color) 62%, transparent 38%);
+    --border-color: color-mix(in srgb, var(--text-color) 18%, transparent 82%);
+    --note-bg: color-mix(in srgb, var(--primary-color) 12%, var(--background-color) 88%);
+    --note-border: color-mix(in srgb, var(--primary-color) 44%, transparent 56%);
+    --note-text: var(--text-color);
 }
 
 html, body, [data-testid="stAppViewContainer"] {
@@ -47,11 +51,11 @@ html, body, [data-testid="stAppViewContainer"] {
 }
 
 [data-testid="stAppViewContainer"] {
-    background: var(--bg-primary);
+    background: var(--bg-primary) !important;
 }
 
 [data-testid="stHeader"] {
-    background: transparent;
+    background: transparent !important;
 }
 
 .main .block-container {
@@ -61,7 +65,7 @@ html, body, [data-testid="stAppViewContainer"] {
 
 /* Header */
 .dashboard-header {
-    background: linear-gradient(135deg, #1e2130 0%, #2d1b69 50%, #1a1d29 100%);
+    background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
     border: 1px solid var(--border-color);
     border-radius: 16px;
     padding: 28px 36px;
@@ -74,17 +78,17 @@ html, body, [data-testid="stAppViewContainer"] {
     position: absolute;
     top: 0; right: 0;
     width: 300px; height: 100%;
-    background: radial-gradient(circle at 80% 50%, rgba(79,141,249,0.12) 0%, transparent 70%);
+    background: radial-gradient(circle at 80% 50%, rgba(79,141,249,0.10) 0%, transparent 70%);
 }
 .dashboard-header h1 {
-    color: var(--text-primary);
+    color: var(--text-primary) !important;
     font-size: 28px;
     font-weight: 700;
     margin: 0 0 6px;
     letter-spacing: -0.5px;
 }
 .dashboard-header p {
-    color: var(--text-secondary);
+    color: var(--text-secondary) !important;
     font-size: 14px;
     margin: 0;
 }
@@ -110,7 +114,7 @@ html, body, [data-testid="stAppViewContainer"] {
     display: block;
 }
 .kpi-card .kpi-label {
-    color: var(--text-secondary);
+    color: var(--text-secondary) !important;
     font-size: 12px;
     font-weight: 500;
     text-transform: uppercase;
@@ -118,20 +122,20 @@ html, body, [data-testid="stAppViewContainer"] {
     margin-bottom: 6px;
 }
 .kpi-card .kpi-value {
-    color: var(--text-primary);
+    color: var(--text-primary) !important;
     font-size: 26px;
     font-weight: 700;
     letter-spacing: -0.5px;
 }
 .kpi-card .kpi-sub {
-    color: var(--text-muted);
+    color: var(--text-muted) !important;
     font-size: 12px;
     margin-top: 4px;
 }
 
 /* Section Headers */
 .section-header {
-    color: var(--text-primary);
+    color: var(--text-primary) !important;
     font-size: 18px;
     font-weight: 600;
     margin: 28px 0 16px;
@@ -158,7 +162,7 @@ html, body, [data-testid="stAppViewContainer"] {
 }
 .stTabs [data-baseweb="tab"] {
     border-radius: 8px;
-    color: var(--text-secondary);
+    color: var(--text-secondary) !important;
     font-weight: 500;
     font-size: 14px;
     padding: 10px 20px;
@@ -170,8 +174,8 @@ html, body, [data-testid="stAppViewContainer"] {
 
 /* Chat */
 [data-testid="stChatMessage"] {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border-color) !important;
     border-radius: 12px;
     padding: 14px 18px;
 }
@@ -198,26 +202,57 @@ html, body, [data-testid="stAppViewContainer"] {
 /* Expanders */
 .streamlit-expanderHeader {
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--text-primary) !important;
+}
+
+/* Market Basket Note */
+.market-basket-note {
+    background: var(--note-bg);
+    border: 1px solid var(--note-border);
+    color: var(--note-text) !important;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin: 0 0 12px 0;
+    font-size: 0.92rem;
+    line-height: 1.5;
+    font-weight: 500;
 }
 
 /* Dividers */
 hr {
-    border-color: var(--border-color);
+    border-color: var(--border-color) !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# ===== PLOTLY THEME =====
 PLOTLY_LAYOUT = dict(
     paper_bgcolor='rgba(0,0,0,0)',
-    plot_bgcolor='rgba(30,33,48,0.6)',
-    font=dict(family='Inter, sans-serif', color='#e2e8f0', size=12),
+    plot_bgcolor='rgba(30,33,48,0.6)' if is_dark_theme else 'rgba(241,245,249,0.85)',
+    font=dict(
+        family='Inter, sans-serif',
+        color='#e2e8f0' if is_dark_theme else '#0f172a',
+        size=12
+    ),
+    title_font=dict(
+        family='Inter, sans-serif',
+        color='#ffffff' if is_dark_theme else '#0f172a',
+        size=16
+    ),
     margin=dict(l=40, r=20, t=50, b=40),
-    xaxis=dict(gridcolor='rgba(45,51,72,0.6)', zerolinecolor='rgba(45,51,72,0.6)'),
-    yaxis=dict(gridcolor='rgba(45,51,72,0.6)', zerolinecolor='rgba(45,51,72,0.6)'),
+    xaxis=dict(
+        gridcolor='rgba(45,51,72,0.6)' if is_dark_theme else 'rgba(148,163,184,0.3)',
+        zerolinecolor='rgba(45,51,72,0.6)' if is_dark_theme else 'rgba(148,163,184,0.3)'
+    ),
+    yaxis=dict(
+        gridcolor='rgba(45,51,72,0.6)' if is_dark_theme else 'rgba(148,163,184,0.3)',
+        zerolinecolor='rgba(45,51,72,0.6)' if is_dark_theme else 'rgba(148,163,184,0.3)'
+    ),
     legend=dict(bgcolor='rgba(0,0,0,0)', font=dict(size=11)),
-    hoverlabel=dict(bgcolor='#1e2130', font_size=12, font_family='Inter'),
+    hoverlabel=dict(
+        bgcolor='#1e2130' if is_dark_theme else '#ffffff',
+        font_size=12,
+        font_family='Inter'
+    ),
 )
 
 COLORS = {
@@ -378,7 +413,7 @@ with tab1:
         name='Doanh thu',
         hovertemplate='%{x}<br>£%{y:,.0f}<extra></extra>'
     ))
-    fig_monthly.update_layout(**PLOTLY_LAYOUT, title='Doanh thu theo tháng', height=380,
+    fig_monthly.update_layout(**PLOTLY_LAYOUT, title='<b>Doanh thu theo tháng</b>', height=380,
                                xaxis_tickangle=-45)
     st.plotly_chart(fig_monthly, width='stretch')
 
@@ -390,7 +425,7 @@ with tab1:
         fig_prod = px.bar(top_products.sort_values('Revenue'),
                           x='Revenue', y='Description', orientation='h',
                           color_discrete_sequence=[COLORS['cyan']],
-                          title='Top 10 sản phẩm theo doanh thu')
+                          title='<b>Top 10 sản phẩm theo doanh thu</b>')
         fig_prod.update_layout(**PLOTLY_LAYOUT, height=420)
         fig_prod.update_traces(hovertemplate='%{y}<br>£%{x:,.0f}<extra></extra>')
         st.plotly_chart(fig_prod, width='stretch')
@@ -400,7 +435,7 @@ with tab1:
         fig_country = px.bar(top_countries.sort_values('Revenue'),
                              x='Revenue', y='Country', orientation='h',
                              color_discrete_sequence=[COLORS['orange']],
-                             title='Top 10 quốc gia theo doanh thu')
+                             title='<b>Top 10 quốc gia theo doanh thu</b>')
         fig_country.update_layout(**PLOTLY_LAYOUT, height=420)
         fig_country.update_traces(hovertemplate='%{y}<br>£%{x:,.0f}<extra></extra>')
         st.plotly_chart(fig_country, width='stretch')
@@ -415,7 +450,7 @@ with tab1:
             x=[str(c) for c in heatmap_data.columns],
             y=list(heatmap_data.index),
             color_continuous_scale='Viridis',
-            title='Doanh thu theo Giờ & Ngày trong tuần'
+            title='<b>Doanh thu theo Giờ & Ngày trong tuần</b>'
         )
         fig_heat.update_layout(**PLOTLY_LAYOUT, height=350)
         st.plotly_chart(fig_heat, width='stretch')
@@ -433,7 +468,7 @@ with tab2:
     col_a, col_b = st.columns(2)
     with col_a:
         fig_donut = px.pie(segment_counts, values='Số khách', names='Nhóm',
-                           hole=0.45, title='Phân bố nhóm khách hàng',
+                           hole=0.45, title='<b>Phân bố nhóm khách hàng</b>',
                            color_discrete_sequence=COLOR_SEQUENCE)
         fig_donut.update_layout(**PLOTLY_LAYOUT, height=420)
         fig_donut.update_traces(textposition='inside', textinfo='percent+label',
@@ -444,7 +479,7 @@ with tab2:
         fig_scatter = px.scatter(rfm, x='Frequency', y='Monetary',
                                  color='Segment', size='Diversity',
                                  hover_data=['CustomerID'],
-                                 title='Biểu đồ RFM — Frequency vs Monetary',
+                                 title='<b>Biểu đồ RFM — Frequency vs Monetary</b>',
                                  opacity=0.65,
                                  color_discrete_sequence=COLOR_SEQUENCE)
         fig_scatter.update_layout(**PLOTLY_LAYOUT, height=420)
@@ -474,7 +509,12 @@ with tab2:
 
     # ─── ASSOCIATION RULES ───
     st.markdown('<div class="section-header">🔗 Association Rules — Quy luật mua hàng kết hợp</div>', unsafe_allow_html=True)
-    st.caption("Phân tích Market Basket: 'Nếu mua sản phẩm A → thường mua thêm sản phẩm B'. Dùng để xây dựng combo khuyến mãi & cross-sell.")
+    st.markdown(
+        '<div class="market-basket-note">Phân tích Market Basket: '
+        '"Nếu mua sản phẩm A → thường mua thêm sản phẩm B". '
+        'Dùng để xây dựng combo khuyến mãi và cross-sell.</div>',
+        unsafe_allow_html=True
+    )
 
     if rules_df is not None and len(rules_df) > 0:
         col_r1, col_r2 = st.columns(2)
@@ -518,7 +558,7 @@ with tab2:
                            x='lift', y='rule', orientation='h',
                            color='confidence',
                            color_continuous_scale='Viridis',
-                           title='Top 15 Association Rules theo Lift',
+                           title='<b>Top 15 Association Rules theo Lift</b>',
                            labels={'lift': 'Lift Score', 'rule': 'Luật', 'confidence': 'Confidence'})
         fig_rules.update_layout(**PLOTLY_LAYOUT, height=500)
         st.plotly_chart(fig_rules, width='stretch')
@@ -585,7 +625,7 @@ with tab3:
 
         fig_fc.update_layout(
             **PLOTLY_LAYOUT,
-            title=f'Dự báo doanh thu — {model_choice} ({approach_choice}) | MAE: £{mae_val:,.0f} | MAPE: {mape_val:.1f}%',
+            title=f'<b>Dự báo doanh thu — {model_choice} ({approach_choice}) | MAE: £{mae_val:,.0f} | MAPE: {mape_val:.1f}%</b>',
             height=450
         )
         st.plotly_chart(fig_fc, width='stretch')
@@ -646,7 +686,7 @@ with tab4:
             mode='lines+markers', marker=dict(size=7),
             hovertemplate='%{x}<br>%{y:+.1f}%<extra></extra>'
         ), secondary_y=True)
-        fig_growth.update_layout(**PLOTLY_LAYOUT, title='Doanh thu & Tốc độ tăng trưởng MoM',
+        fig_growth.update_layout(**PLOTLY_LAYOUT, title='<b>Doanh thu & Tốc độ tăng trưởng MoM</b>',
                                   height=400, xaxis_tickangle=-45)
         fig_growth.update_yaxes(title_text="Doanh thu (£)", secondary_y=False)
         fig_growth.update_yaxes(title_text="Tăng trưởng (%)", secondary_y=True)
@@ -674,7 +714,7 @@ with tab4:
         ))
         fig_pareto.add_hline(y=80, line_dash="dash", line_color=COLORS['red'],
                               annotation_text="80% doanh thu")
-        fig_pareto.update_layout(**PLOTLY_LAYOUT, title='Đường cong Pareto — Tập trung doanh thu',
+        fig_pareto.update_layout(**PLOTLY_LAYOUT, title='<b>Đường cong Pareto — Tập trung doanh thu</b>',
                                   height=400, xaxis_title='% Khách hàng (xếp theo doanh thu giảm dần)',
                                   yaxis_title='% Doanh thu tích lũy')
         st.plotly_chart(fig_pareto, width='stretch')
@@ -706,7 +746,7 @@ with tab4:
                          x='total_revenue', y='Description', orientation='h',
                          color='ABC_Class',
                          color_discrete_map={'A': COLORS['green'], 'B': COLORS['orange'], 'C': COLORS['red']},
-                         title='Top 15 sản phẩm nhóm A (VIP)')
+                         title='<b>Top 15 sản phẩm nhóm A (VIP)</b>')
         fig_abc.update_layout(**PLOTLY_LAYOUT, height=480)
         fig_abc.update_traces(hovertemplate='%{y}<br>£%{x:,.0f}<extra></extra>')
         st.plotly_chart(fig_abc, width='stretch')
@@ -726,7 +766,7 @@ with tab4:
             name='Số đơn hàng', line=dict(color=COLORS['cyan'], width=2),
             mode='lines+markers'
         ), secondary_y=True)
-        fig_basket.update_layout(**PLOTLY_LAYOUT, title='Giá trị giỏ hàng & Số đơn theo tháng',
+        fig_basket.update_layout(**PLOTLY_LAYOUT, title='<b>Giá trị giỏ hàng & Số đơn theo tháng</b>',
                                   height=380, xaxis_tickangle=-45)
         st.plotly_chart(fig_basket, width='stretch')
 
@@ -746,7 +786,7 @@ with tab4:
             x=[f"T{i}" for i in range(cohort_vals.shape[1])],
             y=list(cohort_display.index),
             color_continuous_scale='RdYlGn',
-            title='Cohort Retention Heatmap'
+            title='<b>Cohort Retention Heatmap</b>'
         )
         fig_cohort.update_layout(**PLOTLY_LAYOUT, height=450)
         st.plotly_chart(fig_cohort, width='stretch')
@@ -761,7 +801,7 @@ with tab4:
             color='total_revenue', hover_name='Country',
             hover_data={'total_orders': ':,', 'revenue_share_pct': ':.1f'},
             color_continuous_scale='Viridis',
-            title='Doanh thu theo quốc gia'
+            title='<b>Doanh thu theo quốc gia</b>'
         )
         fig_map.update_layout(**PLOTLY_LAYOUT, height=450, geo=dict(bgcolor='rgba(0,0,0,0)'))
         st.plotly_chart(fig_map, width='stretch')
