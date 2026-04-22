@@ -461,3 +461,190 @@ print("   Churn Prediction: Random Forest trained")
 print("   Forecast Results: forecast_results.csv exported for dashboard")
 
 
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import seaborn as sns
+import numpy as np
+from sklearn.metrics import (
+    confusion_matrix, classification_report,
+    roc_auc_score, roc_curve, ConfusionMatrixDisplay
+)
+
+# ── 1. Chọn ngưỡng tối ưu từ ROC ───────────────────────────────────────
+fpr, tpr, thresholds = roc_curve(y_test, y_prob)
+auc_score = roc_auc_score(y_test, y_prob)
+
+# Tìm điểm threshold tối ưu (Youden's J = TPR - FPR lớn nhất)
+j_scores = tpr - fpr
+optimal_idx = np.argmax(j_scores)
+optimal_threshold = thresholds[optimal_idx]
+
+# Dự báo theo threshold tối ưu để dùng cho confusion matrix trong paper
+y_pred_opt = (y_prob >= optimal_threshold).astype(int)
+
+# ── 2. Tính confusion matrix ──────────────────────────────────────────
+cm = confusion_matrix(y_test, y_pred_opt)
+tn, fp, fn, tp = cm.ravel()
+
+print("=== CONFUSION MATRIX (theo threshold tối ưu) ===")
+print(f"Threshold tối ưu: {optimal_threshold:.3f}")
+print(f"True Negative  (TN): {tn:,}  — Báo an toàn, thực tế an toàn ✓")
+print(f"False Positive (FP): {fp:,}  — Báo churn nhầm (tốn campaign ✗)")
+print(f"False Negative (FN): {fn:,}  — Bỏ sót churn (nguy hiểm nhất ✗)")
+print(f"True Positive  (TP): {tp:,}  — Báo churn đúng ✓")
+print(f"\nTổng test set: {len(y_test):,} khách")
+
+# ── 3. Vẽ Confusion Matrix chuẩn paper ───────────────────────────────
+fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+
+# --- Subplot trái: Confusion Matrix với số thực ---
+cm_display = np.array([[tn, fp], [fn, tp]])
+pred_labels = ['Dự báo: Không churn', 'Dự báo: Churn']
+actual_labels = ['Thực tế: Không churn', 'Thực tế: Churn']
+
+sns.heatmap(
+    cm_display,
+    annot=True,
+    fmt='d',
+    cmap='Blues',
+    xticklabels=labels,
+    yticklabels=labels,
+    linewidths=0.5,
+    linecolor='white',
+    ax=axes[0],
+    annot_kws={"size": 14, "weight": "bold"}
+)
+axes[0].set_title('Confusion Matrix\n(Số lượng khách)', fontsize=13, fontweight='bold', pad=12)
+axes[0].set_xlabel('Dự báo (Predicted)', fontsize=11)
+axes[0].set_ylabel('Thực tế (Actual)', fontsize=11)
+
+# Thêm nhãn TN/FP/FN/TP vào góc mỗi ô
+cell_labels = [['TN', 'FP'], ['FN', 'TP']]
+colors_text = [['#1565C0', '#E65100'], ['#B71C1C', '#1B5E20']]
+for i in range(2):
+    for j in range(2):
+        axes[0].text(
+            j + 0.5, i + 0.75,
+            cell_labels[i][j],
+            ha='center', va='center',
+            fontsize=10, color=colors_text[i][j],
+            fontweight='bold', alpha=0.7
+        )
+
+# --- Subplot phải: Confusion Matrix dạng % (normalized) ---
+cm_norm = cm_display.astype('float') / cm_display.sum(axis=1)[:, np.newaxis] * 100
+
+sns.heatmap(
+    cm_norm,
+    annot=True,
+    fmt='.1f',
+    cmap='Greens',
+    xticklabels=pred_labels,
+    yticklabels=actual_labels,
+    linewidths=0.5,
+    linecolor='white',
+    ax=axes[1],
+    annot_kws={"size": 14, "weight": "bold"}
+)
+axes[1].set_title('Confusion Matrix\n(Tỉ lệ % theo hàng)', fontsize=13, fontweight='bold', pad=12)
+axes[1].set_xlabel('Dự báo (Predicted)', fontsize=11)
+axes[1].set_ylabel('Thực tế (Actual)', fontsize=11)
+
+plt.suptitle('Churn Prediction — Confusion Matrix (Random Forest)',
+             fontsize=14, fontweight='bold', y=1.02)
+plt.tight_layout()
+plt.savefig('outputs/confusion_matrix_paper.png', dpi=200, bbox_inches='tight')
+print("✅ Đã lưu: outputs/confusion_matrix_paper.png")
+
+# ── 4. Bảng Classification Report đẹp ────────────────────────────────
+report = classification_report(
+    y_test, y_pred_opt,
+    target_names=['Active (0)', 'Churned (1)'],
+    output_dict=True
+)
+report_df = pd.DataFrame(report).transpose().round(3)
+
+print("=== CLASSIFICATION REPORT ===")
+print(classification_report(y_test, y_pred_opt,
+      target_names=['Active (0)', 'Churned (1)']))
+
+print("Giải thích từng metric:")
+print(f"  Precision (Churned): {report['Churned (1)']['precision']:.3f}")
+print(f"  → Trong số khách model báo churn: {report['Churned (1)']['precision']*100:.1f}% thực sự churn")
+print(f"  Recall (Churned):    {report['Churned (1)']['recall']:.3f}")
+print(f"  → Trong số khách thực sự churn: model bắt được {report['Churned (1)']['recall']*100:.1f}%")
+print(f"  F1-Score (Churned):  {report['Churned (1)']['f1-score']:.3f}")
+print(f"  AUC-ROC:             {roc_auc_score(y_test, y_prob):.4f}")
+
+# ── 5. Vẽ ROC Curve (bắt buộc trong paper rank A/B) ──────────────────
+
+fig, ax = plt.subplots(figsize=(7, 6))
+
+# ROC curve của model
+ax.plot(fpr, tpr,
+        color='#1565C0', linewidth=2.5,
+        label=f'Random Forest (AUC = {auc_score:.4f})')
+
+# Đường random baseline (AUC = 0.5)
+ax.plot([0, 1], [0, 1],
+        color='gray', linewidth=1.5,
+        linestyle='--', label='Random classifier (AUC = 0.50)')
+
+# Tô vùng dưới curve
+ax.fill_between(fpr, tpr, alpha=0.08, color='#1565C0')
+
+ax.scatter(fpr[optimal_idx], tpr[optimal_idx],
+           color='#E53935', s=100, zorder=5,
+           label=f'Optimal threshold = {optimal_threshold:.2f}')
+
+ax.set_xlabel("False Positive Rate (1 - Specificity)", fontsize=12)
+ax.set_ylabel("True Positive Rate (Recall / Sensitivity)", fontsize=12)
+ax.set_title("ROC Curve — Churn Prediction Model", fontsize=13, fontweight='bold')
+ax.legend(loc='lower right', fontsize=11)
+ax.grid(alpha=0.3)
+ax.set_xlim([0, 1])
+ax.set_ylim([0, 1.02])
+
+plt.tight_layout()
+plt.savefig('outputs/confusion-matrix-roc_curve_paper.png', dpi=200, bbox_inches='tight')
+print(f"✅ AUC-ROC = {auc_score:.4f}")
+print(f"   Optimal threshold = {optimal_threshold:.3f}")
+print(f"   Giải thích: dùng threshold {optimal_threshold:.2f} thay vì 0.5 mặc định")
+print(f"   → cân bằng tốt hơn giữa bắt churn và tránh báo nhầm")
+
+# ── 6. Business Impact Table — cái này rất mạnh cho paper ─────────────
+# Tính revenue của từng ô trong confusion matrix
+
+avg_monetary = rfm['Monetary'].mean()
+
+fn_revenue_loss = fn * avg_monetary
+fp_campaign_cost = fp * 5  # Giả sử chi phí 1 campaign = £5
+
+print("=== BUSINESS IMPACT ANALYSIS ===")
+print(f"\nGiả định:")
+print(f"  Average Customer Monetary Value: £{avg_monetary:,.0f}")
+print(f"  Estimated retention campaign cost per customer: £5")
+print(f"\nKết quả:")
+print(f"  ✓ Khách churn được phát hiện đúng (TP={tp:,}): £{tp*avg_monetary:,.0f} revenue có thể giữ lại")
+print(f"  ✗ Khách churn bị bỏ sót     (FN={fn:,}): £{fn_revenue_loss:,.0f} revenue có nguy cơ mất")
+print(f"  ✗ Campaign gửi nhầm         (FP={fp:,}): £{fp_campaign_cost:,.0f} chi phí lãng phí")
+print(f"\n→ Nếu deploy model này, tiết kiệm được ước tính: £{tp*avg_monetary - fp_campaign_cost:,.0f}")
+
+# ── 7. Lưu tất cả kết quả ─────────────────────────────────────────────
+# Lưu metrics vào file để dùng trong dashboard và paper
+metrics_dict = {
+    'TN': int(tn), 'FP': int(fp),
+    'FN': int(fn), 'TP': int(tp),
+    'Precision_churn': round(report['Churned (1)']['precision'], 4),
+    'Recall_churn':    round(report['Churned (1)']['recall'], 4),
+    'F1_churn':        round(report['Churned (1)']['f1-score'], 4),
+    'AUC_ROC':         round(auc_score, 4),
+    'Optimal_threshold': round(float(optimal_threshold), 4)
+}
+
+import json
+with open('outputs/churn_metrics.json', 'w') as f:
+    json.dump(metrics_dict, f, indent=2)
+
+print("✅ Đã lưu outputs/churn_metrics.json")
+print(json.dumps(metrics_dict, indent=2))
