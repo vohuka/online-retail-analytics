@@ -1,0 +1,11 @@
+{
+  "TN": 297,
+  "FP": 281,
+  "FN": 45,
+  "TP": 245,
+  "Precision_churn": 0.4658,
+  "Recall_churn": 0.8448,
+  "F1_churn": 0.6005,
+  "AUC_ROC": 0.7306,
+  "Optimal_threshold": 0.19
+}
