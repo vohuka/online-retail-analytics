@@ -282,7 +282,7 @@ def load_data():
 @st.cache_data
 def load_association_rules():
     try:
-        rules = pd.read_csv('outputs/association_rules.csv')
+        rules = pd.read_csv('outputs/3.association_rules.csv')
         rules['antecedents'] = rules['antecedents'].str.replace("frozenset\\(\\{", "", regex=True).str.replace("\\}\\)", "", regex=True).str.replace("'", "")
         rules['consequents'] = rules['consequents'].str.replace("frozenset\\(\\{", "", regex=True).str.replace("\\}\\)", "", regex=True).str.replace("'", "")
         return rules
@@ -307,15 +307,15 @@ def load_forecast_summary():
 def load_advanced_analytics():
     data = {}
     files = {
-        'clv': 'customer_lifetime_value.csv',
-        'cohort': 'cohort_retention.csv',
-        'product_abc': 'product_abc_classification.csv',
-        'basket': 'basket_analysis.csv',
-        'concentration': 'revenue_concentration.csv',
-        'monthly_growth': 'monthly_growth.csv',
-        'segment_revenue': 'segment_revenue.csv',
-        'heatmap': 'revenue_heatmap.csv',
-        'country_perf': 'country_performance.csv',
+        'clv': '4.customer_lifetime_value.csv',
+        'cohort': '4.cohort_retention.csv',
+        'product_abc': '4.product_abc_classification.csv',
+        'basket': '4.basket_analysis.csv',
+        'concentration': '4.revenue_concentration.csv',
+        'monthly_growth': '4.monthly_growth.csv',
+        'segment_revenue': '4.segment_revenue.csv',
+        'heatmap': '4.revenue_heatmap.csv',
+        'country_perf': '4.country_performance.csv',
     }
     for key, filename in files.items():
         path = f'outputs/{filename}'

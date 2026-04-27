@@ -1,0 +1,77 @@
+Giải thích ngắn gọn về 9 file đầu ra trong phần Advanced Analytics:
+
+1. customer_lifetime_value.csv
+Đây là bảng CLV, tức giá trị vòng đời ước tính của từng khách hàng. File được dùng để xác định khách hàng nào mang lại giá trị cao, từ đó ưu tiên giữ chân, chăm sóc và triển khai loyalty hoặc upsell.
+
+2. cohort_retention.csv
+Đây là bảng cohort retention, chia khách hàng theo tháng mua đầu tiên rồi theo dõi tỷ lệ họ quay lại trong các tháng sau. File này giúp đánh giá mức độ giữ chân khách hàng, chất lượng acquisition và mức độ trung thành theo thời gian.
+
+3. product_abc_classification.csv
+Đây là bảng phân loại ABC sản phẩm theo đóng góp doanh thu. Nhóm A là các sản phẩm tạo ra phần lớn doanh thu, nhóm B là mức trung bình, còn nhóm C là phần còn lại. File này dùng để ưu tiên tồn kho, trưng bày và ra quyết định về danh mục sản phẩm.
+
+4. basket_analysis.csv
+Đây là phân tích giỏ hàng theo tháng, gồm giá trị giỏ trung bình, số món trung bình, số sản phẩm khác nhau và số đơn hàng. File này phản ánh hành vi mua hàng trong mỗi đơn và hỗ trợ cross-sell, bundle và tối ưu khuyến mãi.
+
+5. revenue_concentration.csv
+Đây là bảng đo mức độ tập trung doanh thu theo khách hàng. Kết quả top 20% khách tạo ra 74.6% doanh thu cho thấy doanh thu phụ thuộc mạnh vào một nhóm khách nhỏ, nên rất quan trọng cho chiến lược VIP retention và quản trị rủi ro doanh thu.
+
+6. monthly_growth.csv
+Đây là bảng tăng trưởng theo tháng, thể hiện doanh thu, số đơn, số khách và tỷ lệ tăng trưởng so với tháng trước. File này dùng để theo dõi xu hướng kinh doanh, phát hiện mùa vụ và các giai đoạn tăng trưởng hoặc suy giảm.
+
+7. segment_revenue.csv
+Đây là bảng doanh thu theo phân khúc khách hàng, thường dựa trên RFM segmentation. File này giúp xác định segment nào đóng góp nhiều doanh thu nhất, segment nào có rủi ro churn cao và nên ưu tiên cho marketing.
+
+8. revenue_heatmap.csv
+Đây là dữ liệu heatmap doanh thu theo DayOfWeek × Hour. File cho biết doanh thu tập trung vào ngày nào trong tuần và giờ nào trong ngày, rất hữu ích để chọn thời điểm bán hàng, chạy chiến dịch và bố trí nguồn lực.
+
+9. country_performance.csv
+Đây là bảng hiệu suất theo quốc gia, gồm doanh thu, số đơn, số lượng bán, số sản phẩm khác nhau và average order value. File này giúp xác định thị trường mạnh nhất, so sánh hiệu quả giữa các quốc gia và định hướng mở rộng kinh doanh.
+
+Tóm lại:
+- CLV và revenue concentration trả lời câu hỏi ai tạo ra giá trị.
+- Cohort retention cho biết khách quay lại tốt đến đâu.
+- ABC classification nói sản phẩm nào là nhóm chủ lực.
+- Basket analysis và heatmap mô tả khách mua như thế nào và khi nào.
+- Monthly growth cho biết kinh doanh đang tăng hay giảm.
+- Segment revenue và country performance cho biết nên ưu tiên phân khúc và thị trường nào.
+
+Phương pháp tính các chỉ số:
+- CLV: gom theo CustomerID, tính first_purchase, last_purchase, total_orders, total_revenue; sau đó ước tính CLV từ doanh thu trung bình mỗi đơn, số đơn và vòng đời khách hàng.
+- Cohort retention: xác định tháng mua đầu tiên của mỗi khách làm CohortMonth, tính CohortIndex theo số tháng kể từ cohort gốc, rồi lấy số khách unique ở từng nhóm và chia cho size của cohort ban đầu để ra retention %.
+- Product ABC: gom theo Description, tính total_revenue từng sản phẩm, sắp xếp giảm dần, tính revenue_pct và cumulative_pct, rồi gán A/B/C theo ngưỡng 80% và 95%.
+- Basket analysis: gom theo InvoiceNo để tính basket_value, items_count và unique_products, sau đó gom tiếp theo tháng để lấy trung bình, median và tổng số đơn.
+- Revenue concentration: gom theo CustomerID để tính revenue từng khách, sắp xếp giảm dần, tính revenue_pct và cumulative_pct; phần Top 20% là tổng tỷ trọng doanh thu của 20% khách đứng đầu.
+- Monthly growth: gom theo tháng để tính revenue, orders, customers và avg_order_value, rồi dùng pct_change() để tính tăng trưởng so với tháng trước.
+- Segment revenue: lấy dữ liệu RFM đã có Segment và ChurnProba, gom theo Segment để tính customer_count, avg_monetary, total_monetary, avg_frequency, avg_recency và revenue_share_pct.
+- Revenue heatmap: gom theo DayOfWeek và Hour, tính tổng Revenue cho từng ô, rồi pivot thành bảng 2 chiều DayOfWeek × Hour.
+- Country performance: gom theo Country để tính total_revenue, total_orders, total_quantity, unique_products và avg_order_value; sau đó tính revenue_share_pct theo tỷ trọng doanh thu của từng quốc gia.
+
+Phương pháp tính và công thức:
+- CLV:
+	CLV_estimated = avg_revenue_per_order × total_orders × (customer_lifespan_days / 365)
+	trong đó avg_revenue_per_order = total_revenue / total_orders.
+- Cohort retention:
+	Retention % = (số khách unique ở CohortMonth, CohortIndex) / (số khách unique ở CohortIndex = 0) × 100.
+- Product ABC:
+	revenue_pct = total_revenue_sản_phẩm / tổng_revenue_tất_cả_sản_phẩm × 100
+	cumulative_pct = tổng lũy kế của revenue_pct sau khi sắp xếp giảm dần.
+	Quy tắc: A nếu cumulative_pct ≤ 80%, B nếu ≤ 95%, C nếu > 95%.
+- Basket analysis:
+	basket_value = Σ Revenue trong 1 InvoiceNo
+	items_count = Σ Quantity trong 1 InvoiceNo
+	unique_products = số StockCode khác nhau trong 1 InvoiceNo.
+- Revenue concentration:
+	revenue_pct_khách = revenue_khách / tổng_revenue × 100
+	cumulative_pct = cộng dồn revenue_pct_khách theo thứ tự giảm dần.
+	Top 20% khách = tổng revenue_pct của 20% khách đứng đầu.
+- Monthly growth:
+	growth % = ((giá trị_tháng_này - giá trị_tháng_trước) / giá trị_tháng_trước) × 100
+	áp dụng cho revenue và orders bằng pct_change().
+- Segment revenue:
+	revenue_share_pct = total_monetary_segment / tổng_total_monetary_tất_cả_segment × 100
+	với total_monetary_segment = Σ Monetary trong segment.
+- Revenue heatmap:
+	Heatmap_{day, hour} = Σ Revenue của mọi giao dịch có cùng DayOfWeek và Hour.
+- Country performance:
+	revenue_share_pct = total_revenue_quốc_gia / tổng_revenue_tất_cả_quốc_gia × 100
+	avg_order_value = total_revenue / total_orders.
